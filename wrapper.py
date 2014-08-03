@@ -4,7 +4,6 @@ import sys
 import sqlite3
 import time
 
-
 def setup():
 
   global conn
@@ -17,6 +16,7 @@ def setup():
 
   # folder to store all settings and backups
   common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
+  common_path_escaped = common_path.replace(" ", "\ ")
 
   # make sure the settings and backups folder exists
   if not os.path.isdir(common_path):
@@ -102,22 +102,33 @@ def undo():
 
   row = result.fetchone()
 
+  backupid = row[0]
   command_to_undo = row[3]
   current_timestamp = row[2]
   git_args = command_to_undo.split(" ")[1:]
 
+  print "repo_path: " + repo_path
+
   if prompt(command_to_undo):
     if git_args[0] == "push":
-      print "undoing a push!"
+      undoPush()
     else:
-      print "undoing something!"
+      restoreBackup(backupid)
 
     cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
     cursor.execute('''UPDATE backups SET most_recent=1 FROM (SELECT * FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
 
-
   else: # user does not want to continue undo
     return
+
+def restoreBackup(backupid):
+  backupdir = common_path_escaped + "backups/" + str(backupid)
+
+  # actually copy the backup
+  # os.chdir("..")
+  subprocess.call("rm -rf {,.[!.],..?}*;cp -r " + backupdir + "/ .", shell=True)
+
+  # os.chdir(repo_path)
 
 # undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
@@ -145,16 +156,6 @@ def prompt(command):
     return False
   else:
     raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
-
-
-
-
-
-
-
-
-
-
 
 
 # Main
