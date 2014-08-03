@@ -41,6 +41,7 @@ def backup():
   cursor.execute('''DELETE FROM backups WHERE
     repo_path="%s" and created_at >
     (SELECT created_at FROM backups WHERE most_recent=1 and repo_path="%s")''' % (repo_path, repo_path))
+
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
   cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command, most_recent) VALUES (?, ?, ?, ?)''',
     (repo_path, created_at, git_command, 1))
@@ -98,14 +99,7 @@ def getBranch():
 
 
 def undo():
-
-  ## remove the most_recent tag from the action to be undone
   result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and most_recent=1''' % repo_path)
-
-
-  # result = cursor.execute('''SELECT * FROM backups where created_at=
-  #   (select max(created_at) from backups where repo_path="%s") and repo_path="%s";''' % (repo_path, repo_path))
-
   row = result.fetchone()
 
   backupid = row[0]
@@ -121,8 +115,11 @@ def undo():
     else:
       restoreBackup(backupid)
 
-    cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
-    cursor.execute('''UPDATE backups SET most_recent=1 FROM (SELECT * FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
+    cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
+    cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid = (SELECT backupid FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
+
+    conn.commit()
+    conn.close()
 
   else: # user does not want to continue undo
     return
