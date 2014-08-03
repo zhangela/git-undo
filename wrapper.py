@@ -28,6 +28,9 @@ def setup():
   conn = sqlite3.connect(common_path + 'gitundo.db')
   cursor = conn.cursor()
 
+  # all commands to ignore
+  ignore = ["blame", "config", "describe", "diff", "log", "shortlog", "show", "status"]
+
 def backup():
 
   # Create table
@@ -189,7 +192,8 @@ try:
   if sys.argv[1] == "undo":
     undo()
   else:
-    backup()
+    if !(sys.argv[1] in ignore):
+      backup()
     subprocess.call(["git"] + sys.argv[1:])
 
 except subprocess.CalledProcessError:
