@@ -36,6 +36,7 @@ cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUE
 backupid = cursor.lastrowid
 backupdir = common_path + "backups/" + str(backupid)
 
+# actually copy the backup
 subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
 print "Git Undo: Backed up to " + backupdir
 
