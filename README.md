@@ -7,9 +7,9 @@ Installation
 ----
 
 1. Download wrapper.py into any directory of your choice.
-2. `cd` into that directory and type `alias git2="python $(pwd)/wrapper.py"`
-3. Use `git2` instead of `git` for all the normal git cases
-4. If you make a mistake with a `git2` command, type `git2 undo` and voila!
+2. `cd` into that directory and type `alias git="python $(pwd)/wrapper.py"`
+3. If you make a mistake with a `git` command, type `git undo` and voila!
+4. If you want to turn off Git Undo, type `git undo off`; To turn it back on, type `git undo on`
 
 ### Commands you can't undo
 
