@@ -10,6 +10,7 @@ def setup():
   global repo_path
   global common_path
   global common_path_escaped
+  global ignore
 
   # strip new line
   repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
@@ -62,7 +63,6 @@ def backup():
   sys.stdout.flush()
 
   conn.commit()
-  conn.close()
 
 # returns commit id of the previous commit
 def getLastCommit():
@@ -99,12 +99,19 @@ def getBranch():
       return i[2:]
   return False
 
-
+def specialUndo():
+  backup()
+  undo()
+  undo()
 
 def undo():
+  # where we are
   result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and most_recent=1''' % repo_path)
   row = result.fetchone()
 
+  if row is None:
+    print "There are no more commands to undo."
+    return
   backupid = row[0]
   command_to_undo = row[3]
   current_timestamp = row[2]
@@ -112,7 +119,7 @@ def undo():
 
   print "repo_path: " + repo_path
 
-  if prompt(command_to_undo):
+  if prompt("undo",command_to_undo):
     if git_args[0] == "push":
       undoPush()
     else:
@@ -122,32 +129,47 @@ def undo():
     cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid = (SELECT backupid FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
 
     conn.commit()
-    conn.close()
 
   else: # user does not want to continue undo
     return
 
 def redo():
-  last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY created_at DESC LIMIT 1''' % repo_path)
-  
-  most_recent_flag = last.fetchone()[4]
+  current = cursor.execute('''SELECT * FROM backups WHERE repo_path = "%s" and most_recent=1''' % repo_path)
+  current_backupid = current.fetchone()[0]
+  last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and backupid>%i ORDER BY created_at ASC LIMIT 2''' % (repo_path,current_backupid))
 
-  ref_timestamp = row[2]
+  result = last.fetchall()
+  # if list size is not 2, then we're screwed.
+  #there is nothing to redo.
+
+  #if list size is 2, then we good. 
   
   # if the flag is currently at most recent repo path, then no path to redo
-  if most_recent_flag==1:
+  if len(result)<2:
     print "There are no more commands to redo."
   else:
-    next_step = cursor.execute('''SELECT * FROM backups WHERE created_at > %i and repo_path = "%s" ORDER BY created_at ASC LIMIT 1''' % (ref_timestamp, repo_path))
-    command_to_undo = next.step.fetchone()[3]
-    git_args = command_to_undo.split(" ")[1:]
+    # result[0] is 1 steps later
+    # result[1] is 2 steps later
+    onestep = result[0]
+    twostep = result[1]
 
-    # find next increment from current step, sets to 1
-    cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
-    cursor.execute('''UPDATE backups SET most_recent=1 FROM (SELECT * FROM backups WHERE created_at > %i and repo_path = "%s" ORDER BY created_at ASC LIMIT 1)''' % (ref_timestamp, repo_path))
+    command_to_redo = onestep[3]
+    git_args = command_to_redo.split(" ")[1:]
 
-    # execute redo
-    subprocess.call(git_args)
+    #reset backup to be twostep's backupdata. 
+    onestepid = onestep[0]
+    nextbackupid = twostep[0]
+
+    if prompt("redo",command_to_redo):
+      if git_args[0] == "push":
+        print "push redo"
+        subprocess.call(command_to_redo)
+      else:
+        print "rebacked"
+        restoreBackup(nextbackupid)
+      # set onestep's recent to be 1 
+      cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
+      cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid=%i''' % onestepid)
 
 def restoreBackup(backupid):
   backupdir = common_path_escaped + "backups/" + str(backupid)
@@ -174,8 +196,8 @@ def undoPush():
   else:
     subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
 
-def prompt(command):
-  print "Are you sure you want to undo the following command: \n\t%s " % command
+def prompt(task, command):
+  print "Are you sure you want to "+task+" the following command: \n\t%s " % command
   ans = raw_input('(y/n): ')
   if ans.lower()=="y" or ans.lower()=="yes":
     return True
@@ -185,16 +207,26 @@ def prompt(command):
   else:
     raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
 
-
 # Main
 try:
   setup()
   if sys.argv[1] == "undo":
-    undo()
+
+    result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY created_at DESC LIMIT 1''' % repo_path)
+    row = result.fetchone()
+    most_recent_flag = row[4]
+
+    if most_recent_flag==1:
+      specialUndo()
+    else:
+      undo()
+  elif sys.argv[1] == "redo":
+    redo()
   else:
-    if !(sys.argv[1] in ignore):
+    if sys.argv[1] not in ignore:
       backup()
     subprocess.call(["git"] + sys.argv[1:])
-
+  conn.commit()
+  conn.close()
 except subprocess.CalledProcessError:
   pass
