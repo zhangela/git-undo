@@ -126,7 +126,6 @@ def move_most_recent_flag_back():
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
   cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid =
     (SELECT backupid FROM backups WHERE backupid < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (backupid, repo_path))
-  conn.commit()
 
 def undo_with_backup():
   # backup()
@@ -187,14 +186,18 @@ def undo():
 
 def redo():
   current = cursor.execute('''SELECT * FROM backups WHERE repo_path = "%s" and most_recent=1''' % repo_path)
-  current_backupid = current.fetchone()[0]
-  last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and backupid>%i ORDER BY created_at ASC LIMIT 2''' % (repo_path,current_backupid))
-
-  result = last.fetchall()
+  try:
+    current_backupid = current.fetchone()[0]
+    last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and backupid>%i ORDER BY created_at ASC LIMIT 2''' % (repo_path,current_backupid))
+    
+  except:
+    # fetchone is null
+    last = cursor.execute('''SELECT * FROM backups WHERE repo_path = "%s" ORDER BY backupid ASC LIMIT 2''' % repo_path)
   # if list size is not 2, then we're screwed.
   #there is nothing to redo.
 
   #if list size is 2, then we good. 
+  result = last.fetchall()
   
   # if the flag is currently at most recent repo path, then no path to redo
   if len(result)<2:
@@ -270,6 +273,9 @@ try:
       undo_with_backup()
     else:
       undo()
+
+    conn.commit()
+
   elif len(sys.argv) > 1 and sys.argv[1] == "redo":
     redo()
     conn.commit()
@@ -283,7 +289,7 @@ try:
       conn.rollback()
     else:
       conn.commit()
-    conn.close()
+  conn.close()
 
 except subprocess.CalledProcessError:
   pass
