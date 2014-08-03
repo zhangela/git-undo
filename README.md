@@ -8,6 +8,7 @@ Installation
 
 1. Download wrapper.py into any directory of your choice.
 2. `cd` into that directory and type `alias git="python $(pwd)/wrapper.py"`
+3. Backups and configuration files are stored in `~/.git-undo/`
 
 ## Usage
 
