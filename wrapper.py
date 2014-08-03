@@ -38,14 +38,20 @@ def backup():
   git_command = "git " + " ".join(sys.argv[1:])
 
   #################### NEED TO UPDATE THIS!!!!
-  cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
-    (repo_path, created_at, git_command))
+  cursor.execute('''DELETE FROM backups WHERE
+    repo_path="%s" and created_at >
+    (SELECT created_at FROM backups WHERE most_recent=1 and repo_path="%s")''' % (repo_path, repo_path))
+  cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
+  cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command, most_recent) VALUES (?, ?, ?, ?)''',
+    (repo_path, created_at, git_command, 1))
 
   backupid = cursor.lastrowid
   backupdir = common_path + "backups/" + str(backupid)
 
-  # actually copy the backup
+  # first, clear the folder
   subprocess.call(["rm", "-rf", backupdir])
+
+  # actually copy the backup
   subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
   print "Git Undo: Backed up to " + backupdir
 
