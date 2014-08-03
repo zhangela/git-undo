@@ -40,7 +40,7 @@ def setup():
 
   cursor.execute('''CREATE TABLE IF NOT EXISTS git_undo_switch (git_undo_is_on integer)''')
   cursor.execute('''SELECT COUNT(*) FROM git_undo_switch''');
-  if cursor.fetchone() is None:
+  if cursor.fetchone()[0] == 0:
     cursor.execute('''INSERT INTO git_undo_switch (git_undo_is_on) VALUES (1)''')
 
 def backup_folder_from_backupid(backupid):
