@@ -116,7 +116,39 @@ def move_most_recent_flag_back():
   conn.commit()
 
 def undo_with_backup():
-  backup()
+  # backup()
+
+  # figure out where we started
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and most_recent=1''' % repo_path)
+  row = result.fetchone()
+
+  if row is None:
+    print "There are no more actions to undo."
+    return
+
+  # save metadata
+  backupid = row[0]
+  command_to_undo = row[3]
+  current_timestamp = row[2]
+  git_args = command_to_undo.split(" ")[1:]
+
+  # prompt user
+  if prompt("undo", command_to_undo):
+    # save the edited state
+    backup()
+
+    # proceed with undo as usual
+    if git_args[0] == "push":
+      undoPush()
+    else:
+      restoreBackup(backupid)
+
+    move_most_recent_flag_back()
+    move_most_recent_flag_back()
+
+  else: # user does not want to continue undo
+    return
+
   undo()
   undo()
 
@@ -133,8 +165,6 @@ def undo():
   command_to_undo = row[3]
   current_timestamp = row[2]
   git_args = command_to_undo.split(" ")[1:]
-
-  print "repo_path: " + repo_path
 
   if prompt("undo", command_to_undo):
     if git_args[0] == "push":
