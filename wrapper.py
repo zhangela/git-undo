@@ -15,10 +15,13 @@ common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
 if not os.path.isdir(common_path):
   os.mkdir(common_path)
 
-def backup():
+if not os.path.isdir(common_path + "backups"):
+  os.mkdir(common_path + "backups")
 
-	conn = sqlite3.connect(common_path + 'gitundo.db')
-	cursor = conn.cursor()
+conn = sqlite3.connect(common_path + 'gitundo.db')
+cursor = conn.cursor()
+
+def backup():
 
 	# Create table
 	cursor.execute('''CREATE TABLE IF NOT EXISTS backups
@@ -31,8 +34,11 @@ def backup():
 		(repo_path, created_at, git_command))
 
 	backupid = cursor.lastrowid
+	backupdir = common_path + "backups/" + str(backupid)
 
-	print "backed up with id: " + str(backupid)
+	# actually copy the backup
+	subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
+	print "Git Undo: Backed up to " + backupdir
 
 	sys.stdout.flush()
 
@@ -42,7 +48,7 @@ def backup():
 # returns commit id of the previous commit
 def getLastCommit():
 	counter = 2
-	x = subprocess.check_output(["git"]+["log"])
+	x = subprocess.check_output(["git", "log"])
 	y = x.split('\n')
 	for i in y:
 		temp = i.split()
@@ -57,7 +63,7 @@ def getLastCommit():
 
 # returns commit id latest commit
 def getCurrentCommit():
-	x = subprocess.check_output(["git"]+["log"])
+	x = subprocess.check_output(["git", "log"])
 	y = x.split('\n')
 	for i in y:
 		temp = i.split()
@@ -67,7 +73,7 @@ def getCurrentCommit():
 
 # returns curent branch
 def getBranch():
-	x = subprocess.check_output(["git"]+["branch"])
+	x = subprocess.check_output(["git", "branch"])
 	y = x.split('\n')
 	for i in y:
 		if (i[:1]=="*"):
@@ -77,13 +83,7 @@ def getBranch():
 
 
 def undo():
-	repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
-	conn = sqlite3.connect(common_path + 'gitundo.db')
-	cursor = conn.cursor()
 
-	# cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
-	# 	(repo_path, created_at, git_command))
-	# Create table
 	action_to_be_undone = cursor.execute('''SELECT * from backups where created_at=
 		(select max(created_at) from backups where repo_path=\"''' +  
 			repo_path + '''\") and repo_path=\"''' + repo_path + '''\";''')
