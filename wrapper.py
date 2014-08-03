@@ -276,12 +276,12 @@ def git_undo_on():
 # Main
 
 try:
+
   setup()
   if len(sys.argv) > 2 and sys.argv[1] == "undo" and sys.argv[2] == "on":
     print "Git Undo is now on. \nYou can undo the most recent 5 git commands made after this point."
     cursor.execute('''UPDATE git_undo_switch SET git_undo_is_on = 1''')
     conn.commit()
-
   elif len(sys.argv) > 2 and sys.argv[1] == "undo" and sys.argv[2] == "off":
     print "Git Undo is now off. \nYou won't be able to undo git actions!"
     cursor.execute('''UPDATE git_undo_switch SET git_undo_is_on = 0''')
@@ -290,7 +290,7 @@ try:
   elif (sys.argv[1] == "undo" or sys.argv[1] == "redo") and (not git_undo_on()):
       print "Git Undo is currently off. \nType 'git undo on' to turn on Git Undo."
   
-  elif sys.argv[1] == "undo": #and git undo is on
+  elif len(sys.argv) > 1 and sys.argv[1] == "undo": #and git undo is on
     result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY created_at DESC LIMIT 1''' % repo_path)
     row = result.fetchone()
     most_recent_flag = row[4]
@@ -298,17 +298,16 @@ try:
     if most_recent_flag==1:
       undo_with_backup()
     else:
-      undo()
-    
+      undo()    
     conn.commit()
 
-  elif sys.argv[1] == "redo": # and git undo is on
+  elif len(sys.argv) > 1 and sys.argv[1] == "redo":
     redo()
     conn.commit()
   
   else:
     if git_undo_on(): ## Git Undo is On
-      if sys.argv[1] not in ignore:
+      if len(sys.argv) > 1 and sys.argv[1] not in ignore:
         backup()
       exit_code = subprocess.call(["git"] + sys.argv[1:])
 
