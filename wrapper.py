@@ -32,33 +32,46 @@ def setup():
   # all commands to ignore
   ignore = ["blame", "config", "describe", "diff", "log", "shortlog", "show", "status"]
 
-def backup():
   # Create table
   cursor.execute('''CREATE TABLE IF NOT EXISTS backups
     (backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text, most_recent integer)''')
 
+def backup_folder_from_backupid(backupid):
+  backupid = cursor.lastrowid
+  backupdir = common_path + "backups/" + str(backupid)
+
+  return backupdir
+
+def delete_directory(path):
+  subprocess.call(["rm", "-rf", path])
+
+def copy_directory(from_path, to_path):
+  subprocess.call(["cp", "-a", from_path + "/.", to_path])
+
+def backup():
   created_at = int(time.time() * 1000)
   git_command = "git " + " ".join(sys.argv[1:])
 
-  #################### NEED TO UPDATE THIS!!!!
+  # delete alternate undo timeline
   cursor.execute('''DELETE FROM backups WHERE
     repo_path="%s" and created_at >
     (SELECT created_at FROM backups WHERE most_recent=1 and repo_path="%s")''' % (repo_path, repo_path))
 
+  # set all most recent flags to 0 and insert a new backup with most_recent = 1
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
   cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command, most_recent) VALUES (?, ?, ?, ?)''',
     (repo_path, created_at, git_command, 1))
 
-  backupid = cursor.lastrowid
-  backupdir = common_path + "backups/" + str(backupid)
+  backupdir = backup_folder_from_backupid(backupid)
 
   # first, clear the folder
-  subprocess.call(["rm", "-rf", backupdir])
+  delete_directory(backupdir)
 
   # actually copy the backup
-  subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
-  print "Git Undo: Backed up to " + backupdir
+  copy_directory(repo_path, backupdir)
 
+  # print message
+  print "Git Undo: Backed up to " + backupdir
   sys.stdout.flush()
 
 # returns commit id of the previous commit
@@ -171,11 +184,8 @@ def redo():
 def restoreBackup(backupid):
   backupdir = common_path_escaped + "backups/" + str(backupid)
 
-  # actually copy the backup
-  # os.chdir("..")
+  # a hacky command that Angela found on the internet
   subprocess.call("rm -rf {,.[!.],..?}*;cp -r " + backupdir + "/ .", shell=True)
-
-  # os.chdir(repo_path)
 
 # undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
@@ -193,8 +203,8 @@ def undoPush():
   else:
     subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
 
-def prompt(task, command):
-  print "Are you sure you want to "+task+" the following command: \n\t%s " % command
+def prompt(task, action):
+  print "Are you sure you want to "+task+" the following action: \n\t%s " % action
   ans = raw_input('(y/n): ')
   if ans.lower()=="y" or ans.lower()=="yes":
     return True
