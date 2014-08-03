@@ -118,7 +118,13 @@ def getBranch():
       return i[2:]
   return False
 
-def specialUndo():
+def move_most_recent_flag_back():
+  # move the most recent flag one step back
+  cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
+  cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid = (SELECT backupid FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
+  conn.commit()
+
+def undo_with_backup():
   backup()
   undo()
   undo()
@@ -129,8 +135,9 @@ def undo():
   row = result.fetchone()
 
   if row is None:
-    print "There are no more commands to undo."
+    print "There are no more actions to undo."
     return
+
   backupid = row[0]
   command_to_undo = row[3]
   current_timestamp = row[2]
@@ -138,16 +145,13 @@ def undo():
 
   print "repo_path: " + repo_path
 
-  if prompt("undo",command_to_undo):
+  if prompt("undo", command_to_undo):
     if git_args[0] == "push":
       undoPush()
     else:
       restoreBackup(backupid)
 
-    cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
-    cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid = (SELECT backupid FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
-
-    conn.commit()
+    move_most_recent_flag_back()
 
   else: # user does not want to continue undo
     return
@@ -233,7 +237,7 @@ try:
     most_recent_flag = row[4]
 
     if most_recent_flag==1:
-      specialUndo()
+      undo_with_backup()
     else:
       undo()
   elif sys.argv[1] == "redo":
