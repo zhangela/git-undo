@@ -10,3 +10,15 @@ Installation
 2. `cd` into that directory and type `alias git2='python wrapper.py'`
 3. Use `git2` instead of `git` for all the normal git cases
 4. If you make a mistake with a `git` command, type `git2 undo` and violla!
+
+Commands we don't support
+----
+
++ git blame
++ git config
++ git describe
++ git diff
++ git log
++ git shortlog
++ git show
++ git status
