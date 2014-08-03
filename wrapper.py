@@ -33,7 +33,6 @@ def setup():
   ignore = ["blame", "config", "describe", "diff", "log", "shortlog", "show", "status"]
 
 def backup():
-
   # Create table
   cursor.execute('''CREATE TABLE IF NOT EXISTS backups
     (backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text, most_recent integer)''')
@@ -61,8 +60,6 @@ def backup():
   print "Git Undo: Backed up to " + backupdir
 
   sys.stdout.flush()
-
-  conn.commit()
 
 # returns commit id of the previous commit
 def getLastCommit():
@@ -225,8 +222,15 @@ try:
   else:
     if sys.argv[1] not in ignore:
       backup()
-    subprocess.call(["git"] + sys.argv[1:])
-  conn.commit()
-  conn.close()
+    exit_code = subprocess.call(["git"] + sys.argv[1:])
+
+    if exit_code !== 0:
+      # undo the backup
+      conn.rollback()
+    else:
+      conn.commit()
+      
+    conn.close()
+    
 except subprocess.CalledProcessError:
   pass
