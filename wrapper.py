@@ -5,8 +5,6 @@ import sqlite3
 import hashlib
 import time
 
-prompt = '> '
-
 # strip new line
 repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
@@ -17,27 +15,29 @@ common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
 if not os.path.isdir(common_path):
   os.mkdir(common_path)
 
-conn = sqlite3.connect(common_path + 'gitundo.db')
-cursor = conn.cursor()
+def backup():
 
-# Create table
-cursor.execute('''CREATE TABLE IF NOT EXISTS backups
-	(backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text)''')
+	conn = sqlite3.connect(common_path + 'gitundo.db')
+	cursor = conn.cursor()
 
-created_at = int(time.time() * 1000)
-git_command = "git " + " ".join(sys.argv[1:])
+	# Create table
+	cursor.execute('''CREATE TABLE IF NOT EXISTS backups
+		(backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text)''')
 
-cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
-	(repo_path, created_at, git_command))
+	created_at = int(time.time() * 1000)
+	git_command = "git " + " ".join(sys.argv[1:])
 
-backupid = cursor.lastrowid
+	cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
+		(repo_path, created_at, git_command))
 
-print "backed up with id: " + str(backupid)
+	backupid = cursor.lastrowid
 
-sys.stdout.flush()
+	print "backed up with id: " + str(backupid)
 
-conn.commit()
-conn.close()
+	sys.stdout.flush()
+
+	conn.commit()
+	conn.close()
 
 # returns commit id of the previous commit
 def getLastCommit():
@@ -74,6 +74,26 @@ def getBranch():
 			return i[2:]
 	return False
 
+
+
+def undo():
+	repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
+	conn = sqlite3.connect(common_path + 'gitundo.db')
+	cursor = conn.cursor()
+
+	# cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
+	# 	(repo_path, created_at, git_command))
+	# Create table
+	action_to_be_undone = cursor.execute('''SELECT * from backups where created_at=
+		(select max(created_at) from backups where repo_path=\"''' +  
+			repo_path + '''\") and repo_path=\"''' + repo_path + '''\";''')
+
+	for row in action_to_be_undone:
+		print row
+	sys.stdout.flush()
+
+
+
 # undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
 	# if system.denyNonFastForwards and denyDeletes:
@@ -90,14 +110,18 @@ def undoPush():
 	else:
  		subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
 
+
 ## Main Code
-if (sys.argv[1] == "push"):
-	undoPush()
-elif (sys.argv[1] == "test"):
-	print("tester")
+if sys.argv[1] == "undo":
+	undo()
+# elif (sys.argv[1] == "push"):
+# 	undoPush()
 else:
+	backup()
 	subprocess.call(["git"] + sys.argv[1:])
 
+
+prompt = '> '
 
 ## Code for prompts
 
