@@ -272,6 +272,7 @@ try:
       undo_with_backup()
     else:
       undo()
+    conn.commit()
   elif sys.argv[1] == "redo":
     redo()
     conn.commit()
@@ -285,7 +286,7 @@ try:
       conn.rollback()
     else:
       conn.commit()
-    conn.close()
+  conn.close()
 
 except subprocess.CalledProcessError:
   pass
