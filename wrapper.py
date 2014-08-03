@@ -4,21 +4,24 @@ import sys
 import sqlite3
 import time
 
-# strip new line
-repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
-# folder to store all settings and backups
-common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
+def setup():
+  # strip new line
+  repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
-# make sure the settings and backups folder exists
-if not os.path.isdir(common_path):
-  os.mkdir(common_path)
+  # folder to store all settings and backups
+  common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
 
-if not os.path.isdir(common_path + "backups"):
-  os.mkdir(common_path + "backups")
+  # make sure the settings and backups folder exists
+  if not os.path.isdir(common_path):
+    os.mkdir(common_path)
 
-conn = sqlite3.connect(common_path + 'gitundo.db')
-cursor = conn.cursor()
+  if not os.path.isdir(common_path + "backups"):
+    os.mkdir(common_path + "backups")
+
+  conn = sqlite3.connect(common_path + 'gitundo.db')
+  cursor = conn.cursor()
+
 
 def backup():
 
@@ -125,22 +128,25 @@ def prompt(command):
   else:
     raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
 
-## Main Code
-if sys.argv[1] == "undo":
-  undo()
-# elif (sys.argv[1] == "push"):
-#   undoPush()
-else:
-  backup()
-  subprocess.call(["git"] + sys.argv[1:])
 
-## Code for prompts
 
-# print("Your repository has a denyNonFastForward flag on, so the history \
-#   cannot be overwritten. The undo-push will be written into the git history.\
-#    Is that alright? (Y/N)")
-# ans = raw_input(prompt)
-# if (ans.lower()=="y" or ans.lower()=="yes"):
-# elif (ans.lower()=="n" or ans.lower()=="no"):
-# else:
-#   raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
+
+
+
+
+
+
+
+
+
+# Main
+try:
+  setup()
+  if sys.argv[1] == "undo":
+    undo()
+  else:
+    backup()
+    subprocess.call(["git"] + sys.argv[1:])
+
+except subprocess.CalledProcessError:
+  pass
