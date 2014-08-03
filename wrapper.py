@@ -48,11 +48,21 @@ def getLastCommit():
 		temp = i.split()
 		if temp==[]:
 			continue
-		elif (i.split()[0]=="commit"):
+		elif (temp[0]=="commit"):
 			counter-=1
 
 		if counter==0:
-			return i.split()[1]
+			return temp[1]
+	return False	
+
+# returns commit id latest commit
+def getCurrentCommit():
+	x = subprocess.check_output(["git"]+["log"])
+	y = x.split('\n')
+	for i in y:
+		temp = i.split()
+		if (temp[0]=="commit"):
+			return temp[1]
 	return False	
 
 # returns curent branch
@@ -64,17 +74,18 @@ def getBranch():
 			return i[2:]
 	return False
 
-# undos push
+# undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
 	# if system.denyNonFastForwards and denyDeletes:
 	if False:
-		print("")
+		subprocess.call(["git","update-ref","refs/heads/"+getBranch(),getLastCommit(),getCurrentCommit()])
 	# elif system.denyNonFastForwards and master is not the only branch
 	elif False:
 		print("")
 	# elif system.denyNonFastForwards
 	elif False:
-		print("sorry we don't support you yet.")
+		subprocess.call(["git","push","origin",":"+getBranch()])
+		subprocess.call(["git","push","origin",getLastCommit()+":refs/heads/"+getBranch()])
 	# else
 	else:
  		subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
