@@ -17,7 +17,7 @@ def setup():
   repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
   # folder to store all settings and backups
-  common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
+  common_path = os.path.expanduser("~/.git-undo/")
   common_path_escaped = common_path.replace(" ", "\ ")
 
   # make sure the settings and backups folder exists
