@@ -219,18 +219,18 @@ try:
       undo()
   elif sys.argv[1] == "redo":
     redo()
+    conn.commit()
   else:
     if sys.argv[1] not in ignore:
       backup()
     exit_code = subprocess.call(["git"] + sys.argv[1:])
 
-    if exit_code !== 0:
+    if exit_code != 0:
       # undo the backup
       conn.rollback()
     else:
       conn.commit()
-      
     conn.close()
-    
+
 except subprocess.CalledProcessError:
   pass
