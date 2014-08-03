@@ -39,6 +39,7 @@ sys.stdout.flush()
 conn.commit()
 conn.close()
 
+# returns commit id of the previous commit
 def getLastCommit():
 	counter = 2
 	x = subprocess.check_output(["git"]+["log"])
@@ -54,6 +55,7 @@ def getLastCommit():
 			return i.split()[1]
 	return False	
 
+# returns curent branch
 def getBranch():
 	x = subprocess.check_output(["git"]+["branch"])
 	y = x.split('\n')
@@ -62,6 +64,7 @@ def getBranch():
 			return i[2:]
 	return False
 
+# undos push
 def undoPush():
 	# if system.denyNonFastForwards and denyDeletes:
 	if False:
@@ -74,16 +77,12 @@ def undoPush():
 		print("sorry we don't support you yet.")
 	# else
 	else:
-		print("hi")
-		print(["git","push","-f","origin",getLastCommit(),":",getBranch()])
  		subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
 
 ## Main Code
-print (sys.argv[1])
-
 if (sys.argv[1] == "push"):
 	undoPush()
-if (sys.argv[1] == "test"):
+elif (sys.argv[1] == "test"):
 	print("tester")
 else:
 	subprocess.call(["git"] + sys.argv[1:])
