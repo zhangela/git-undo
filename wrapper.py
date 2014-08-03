@@ -51,6 +51,13 @@ def backup():
   created_at = int(time.time() * 1000)
   git_command = "git " + " ".join(sys.argv[1:])
 
+  todelete = cursor.execute('''SELECT backupid FROM backups WHERE
+    repo_path="%s" and created_at >
+    (SELECT created_at FROM backups WHERE most_recent=1 and repo_path="%s")''' % (repo_path, repo_path))
+  # all of these things that we delete, we want to delete directory as well. 
+  for backupid in todelete:
+    delete_directory(backup_folder_from_backupid(backupid[0]))
+
   # delete alternate undo timeline
   cursor.execute('''DELETE FROM backups WHERE
     repo_path="%s" and created_at >
@@ -61,7 +68,6 @@ def backup():
   cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command, most_recent) VALUES (?, ?, ?, ?)''',
     (repo_path, created_at, git_command, 1))
   backupid = cursor.lastrowid
-
   backupdir = backup_folder_from_backupid(backupid)
 
   # first, clear the folder
@@ -217,10 +223,8 @@ def redo():
 
     if prompt("redo",command_to_redo):
       if git_args[0] == "push":
-        print "push redo"
-        subprocess.call(command_to_redo)
+        subprocess.call(["git"]+git_args)
       else:
-        print "rebacked"
         restoreBackup(nextbackupid)
       # set onestep's recent to be 1 
       cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
