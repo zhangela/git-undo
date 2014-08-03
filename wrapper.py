@@ -23,102 +23,102 @@ cursor = conn.cursor()
 
 def backup():
 
-	# Create table
-	cursor.execute('''CREATE TABLE IF NOT EXISTS backups
-		(backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text)''')
+  # Create table
+  cursor.execute('''CREATE TABLE IF NOT EXISTS backups
+    (backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text)''')
 
-	created_at = int(time.time() * 1000)
-	git_command = "git " + " ".join(sys.argv[1:])
+  created_at = int(time.time() * 1000)
+  git_command = "git " + " ".join(sys.argv[1:])
 
-	cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
-		(repo_path, created_at, git_command))
+  cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
+    (repo_path, created_at, git_command))
 
-	backupid = cursor.lastrowid
-	backupdir = common_path + "backups/" + str(backupid)
+  backupid = cursor.lastrowid
+  backupdir = common_path + "backups/" + str(backupid)
 
-	# actually copy the backup
-	subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
-	print "Git Undo: Backed up to " + backupdir
+  # actually copy the backup
+  subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
+  print "Git Undo: Backed up to " + backupdir
 
-	sys.stdout.flush()
+  sys.stdout.flush()
 
-	conn.commit()
-	conn.close()
+  conn.commit()
+  conn.close()
 
 # returns commit id of the previous commit
 def getLastCommit():
-	counter = 2
-	x = subprocess.check_output(["git", "log"])
-	y = x.split('\n')
-	for i in y:
-		temp = i.split()
-		if temp==[]:
-			continue
-		elif (temp[0]=="commit"):
-			counter-=1
+  counter = 2
+  x = subprocess.check_output(["git", "log"])
+  y = x.split('\n')
+  for i in y:
+    temp = i.split()
+    if temp==[]:
+      continue
+    elif (temp[0]=="commit"):
+      counter-=1
 
-		if counter==0:
-			return temp[1]
-	return False	
+    if counter==0:
+      return temp[1]
+  return False  
 
 # returns commit id latest commit
 def getCurrentCommit():
-	x = subprocess.check_output(["git", "log"])
-	y = x.split('\n')
-	for i in y:
-		temp = i.split()
-		if (temp[0]=="commit"):
-			return temp[1]
-	return False	
+  x = subprocess.check_output(["git", "log"])
+  y = x.split('\n')
+  for i in y:
+    temp = i.split()
+    if (temp[0]=="commit"):
+      return temp[1]
+  return False  
 
 # returns curent branch
 def getBranch():
-	x = subprocess.check_output(["git", "branch"])
-	y = x.split('\n')
-	for i in y:
-		if (i[:1]=="*"):
-			return i[2:]
-	return False
+  x = subprocess.check_output(["git", "branch"])
+  y = x.split('\n')
+  for i in y:
+    if (i[:1]=="*"):
+      return i[2:]
+  return False
 
 
 
 def undo():
 
-	action_to_be_undone = cursor.execute('''SELECT * from backups where created_at=
-		(select max(created_at) from backups where repo_path=\"''' +  
-			repo_path + '''\") and repo_path=\"''' + repo_path + '''\";''')
+  action_to_be_undone = cursor.execute('''SELECT * from backups where created_at=
+    (select max(created_at) from backups where repo_path=\"''' +  
+      repo_path + '''\") and repo_path=\"''' + repo_path + '''\";''')
 
-	for row in action_to_be_undone:
-		print row
-	sys.stdout.flush()
+  for row in action_to_be_undone:
+    print row
+  sys.stdout.flush()
 
 
 
 # undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
-	# if system.denyNonFastForwards and denyDeletes:
-	if False:
-		subprocess.call(["git","update-ref","refs/heads/"+getBranch(),getLastCommit(),getCurrentCommit()])
-	# elif system.denyNonFastForwards and master is not the only branch
-	elif False:
-		print("")
-	# elif system.denyNonFastForwards
-	elif False:
-		subprocess.call(["git","push","origin",":"+getBranch()])
-		subprocess.call(["git","push","origin",getLastCommit()+":refs/heads/"+getBranch()])
-	# else
-	else:
- 		subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
+  # if system.denyNonFastForwards and denyDeletes:
+  if False:
+    subprocess.call(["git","update-ref","refs/heads/"+getBranch(),getLastCommit(),getCurrentCommit()])
+  # elif system.denyNonFastForwards and master is not the only branch
+  elif False:
+    print("")
+  # elif system.denyNonFastForwards
+  elif False:
+    subprocess.call(["git","push","origin",":"+getBranch()])
+    subprocess.call(["git","push","origin",getLastCommit()+":refs/heads/"+getBranch()])
+  # else
+  else:
+    subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
 
 
 ## Main Code
 if sys.argv[1] == "undo":
-	undo()
+  undo()
 # elif (sys.argv[1] == "push"):
-# 	undoPush()
+#   undoPush()
 else:
-	backup()
-	subprocess.call(["git"] + sys.argv[1:])
+  backup()
+  subprocess.call(["git"] + sys.argv[1:])
 
 
 prompt = '> '
@@ -126,10 +126,10 @@ prompt = '> '
 ## Code for prompts
 
 # print("Your repository has a denyNonFastForward flag on, so the history \
-# 	cannot be overwritten. The undo-push will be written into the git history.\
-# 	 Is that alright? (Y/N)")
+#   cannot be overwritten. The undo-push will be written into the git history.\
+#    Is that alright? (Y/N)")
 # ans = raw_input(prompt)
 # if (ans.lower()=="y" or ans.lower()=="yes"):
 # elif (ans.lower()=="n" or ans.lower()=="no"):
 # else:
-# 	raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
+#   raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
