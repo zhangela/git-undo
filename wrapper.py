@@ -13,8 +13,11 @@ def setup():
   global ignore
   global git_undo_on
 
-  # strip new line
-  repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
+  if len(sys.argv) > 1 and sys.argv[1] == "init":
+    repo_path = os.getcwd()
+  else:
+    # strip new line
+    repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
   # folder to store all settings and backups
   common_path = os.path.expanduser("~/.git-undo/")
