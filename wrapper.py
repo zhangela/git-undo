@@ -59,6 +59,14 @@ def backup():
   subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
   print "Git Undo: Backed up to " + backupdir
 
+  # check to see if we need to delete one
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and most_recent=1''' % repo_path)
+  backupid = result.fetchone()[0]
+
+  #find all backups less than most recent, make sure this is less than 6
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and backupid<%i''' % (backupid, repo_path))
+
+
   sys.stdout.flush()
 
 # returns commit id of the previous commit
