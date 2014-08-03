@@ -258,8 +258,9 @@ def prompt(task, action):
 
 # Main
 try:
+
   setup()
-  if sys.argv[1] == "undo":
+  if len(sys.argv) > 1 and sys.argv[1] == "undo":
 
     result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY created_at DESC LIMIT 1''' % repo_path)
     row = result.fetchone()
@@ -269,11 +270,11 @@ try:
       undo_with_backup()
     else:
       undo()
-  elif sys.argv[1] == "redo":
+  elif len(sys.argv) > 1 and sys.argv[1] == "redo":
     redo()
     conn.commit()
   else:
-    if sys.argv[1] not in ignore:
+    if len(sys.argv) > 1 and sys.argv[1] not in ignore:
       backup()
     exit_code = subprocess.call(["git"] + sys.argv[1:])
 
