@@ -3,6 +3,8 @@ Git Undo
 
 A wrapper around `git` that lets you undo unfortunate git commands by making backups of your git repository. Currently, you can undo the 5 most recent git commands.
 
+![Demo GIF](https://raw.githubusercontent.com/zhangela/git-undo/master/demo.gif)
+
 Installation
 ----
 
