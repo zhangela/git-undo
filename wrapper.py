@@ -118,7 +118,7 @@ def getBranch():
       return i[2:]
   return False
 
-def move_most_recent_flag_back():
+def move_most_recent_flag_back(current_timestamp):
   # move the most recent flag one step back
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
   cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid = (SELECT backupid FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
@@ -152,14 +152,11 @@ def undo_with_backup():
     else:
       restoreBackup(backupid)
 
-    move_most_recent_flag_back()
-    move_most_recent_flag_back()
+    move_most_recent_flag_back(current_timestamp)
+    move_most_recent_flag_back(current_timestamp)
 
   else: # user does not want to continue undo
     return
-
-  undo()
-  undo()
 
 def undo():
   # where we are
@@ -181,7 +178,7 @@ def undo():
     else:
       restoreBackup(backupid)
 
-    move_most_recent_flag_back()
+    move_most_recent_flag_back(current_timestamp)
 
   else: # user does not want to continue undo
     return
