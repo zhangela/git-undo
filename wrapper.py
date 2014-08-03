@@ -90,10 +90,13 @@ def undo():
   command_to_undo = row[3]
   git_args = command_to_undo.split(" ")[1:]
 
-  if git_args[0] == "push":
-    print "undoing a push!"
-  else:
-    print "undoing something!"
+  if prompt(command_to_undo):
+    if git_args[0] == "push":
+      print "undoing a push!"
+    else:
+      print "undoing something!"
+  else: # user does not want to continue undo
+    return
 
 # undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
@@ -111,6 +114,16 @@ def undoPush():
   else:
     subprocess.call(["git","push","-f","origin",getLastCommit()+":"+getBranch()])
 
+def prompt(command):
+  print "Are you sure you want to undo the following command: \n\t%s " % command
+  ans = raw_input('(y/n): ')
+  if ans.lower()=="y" or ans.lower()=="yes":
+    return True
+  elif ans.lower()=="n" or ans.lower()=="no":
+    print "Canceling undo."
+    return False
+  else:
+    raise ValueError("Sorry bro I have no idea what you're saying.  Bye.")
 
 ## Main Code
 if sys.argv[1] == "undo":
@@ -120,9 +133,6 @@ if sys.argv[1] == "undo":
 else:
   backup()
   subprocess.call(["git"] + sys.argv[1:])
-
-
-prompt = '> '
 
 ## Code for prompts
 
