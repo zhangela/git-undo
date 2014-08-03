@@ -9,6 +9,7 @@ repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).str
 
 # folder to store all settings and backups
 common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
+common_path_escaped = common_path.replace(" ", "\ ")
 
 # make sure the settings and backups folder exists
 if not os.path.isdir(common_path):
@@ -87,16 +88,29 @@ def undo():
 
   row = result.fetchone()
 
+  backupid = row[0]
   command_to_undo = row[3]
   git_args = command_to_undo.split(" ")[1:]
 
+  print "repo_path: " + repo_path
+
   if prompt(command_to_undo):
     if git_args[0] == "push":
-      print "undoing a push!"
+      undoPush()
     else:
-      print "undoing something!"
+      restoreBackup(backupid)
+
   else: # user does not want to continue undo
     return
+
+def restoreBackup(backupid):
+  backupdir = common_path_escaped + "backups/" + str(backupid)
+
+  # actually copy the backup
+  # os.chdir("..")
+  subprocess.call("rm -rf {,.[!.],..?}*;cp -r " + backupdir + "/ .", shell=True)
+
+  # os.chdir(repo_path)
 
 # undos push, as noted by http://stackoverflow.com/questions/1270514/undoing-a-git-push
 def undoPush():
@@ -128,8 +142,6 @@ def prompt(command):
 ## Main Code
 if sys.argv[1] == "undo":
   undo()
-# elif (sys.argv[1] == "push"):
-#   undoPush()
 else:
   backup()
   subprocess.call(["git"] + sys.argv[1:])
