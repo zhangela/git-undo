@@ -3,8 +3,10 @@ import os
 import sys
 import sqlite3
 import hashlib
+import time
 
-repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"])
+# strip new line
+repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
 # folder to store all settings and backups
 common_path = os.path.expanduser("~/Library/Application Support/git-undo/")
@@ -21,14 +23,14 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS backups
 	(backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text)''')
 
 created_at = int(time.time() * 1000)
-git_command = "git " + sys.argv[1:].join(" ")
+git_command = "git " + " ".join(sys.argv[1:])
 
 cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
 	(repo_path, created_at, git_command))
 
 backupid = cursor.lastrowid
 
-print "backed up with id: " + backupid
+print "backed up with id: " + str(backupid)
 
 sys.stdout.flush()
 
