@@ -121,6 +121,28 @@ def undo():
   else: # user does not want to continue undo
     return
 
+def redo():
+  last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY created_at DESC LIMIT 1''' % repo_path)
+  
+  most_recent_flag = last.fetchone()[4]
+
+  ref_timestamp = row[2]
+  
+  # if the flag is currently at most recent repo path, then no path to redo
+  if most_recent_flag==1:
+    print "There are no more commands to redo."
+  else:
+    next_step = cursor.execute('''SELECT * FROM backups WHERE created_at > %i and repo_path = "%s" ORDER BY created_at ASC LIMIT 1''' % (ref_timestamp, repo_path))
+    command_to_undo = next.step.fetchone()[3]
+    git_args = command_to_undo.split(" ")[1:]
+
+    # find next increment from current step, sets to 1
+    cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
+    cursor.execute('''UPDATE backups SET most_recent=1 FROM (SELECT * FROM backups WHERE created_at > %i and repo_path = "%s" ORDER BY created_at ASC LIMIT 1)''' % (ref_timestamp, repo_path))
+
+    # execute redo
+    subprocess.call(git_args)
+
 def restoreBackup(backupid):
   backupdir = common_path_escaped + "backups/" + str(backupid)
 
