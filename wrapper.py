@@ -5,6 +5,12 @@ import sqlite3
 import time
 
 def setup():
+
+  global conn
+  global cursor
+  global repo_path
+  global common_path
+
   # strip new line
   repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
@@ -26,11 +32,12 @@ def backup():
 
   # Create table
   cursor.execute('''CREATE TABLE IF NOT EXISTS backups
-    (backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text)''')
+    (backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text, most_recent integer)''')
 
   created_at = int(time.time() * 1000)
   git_command = "git " + " ".join(sys.argv[1:])
 
+  #################### NEED TO UPDATE THIS!!!!
   cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command) VALUES (?, ?, ?)''',
     (repo_path, created_at, git_command))
 
@@ -85,13 +92,19 @@ def getBranch():
 
 
 def undo():
-  result = cursor.execute('''SELECT * from backups where created_at=
-    (select max(created_at) from backups where repo_path="%s") and repo_path="%s";''' % (repo_path, repo_path))
+
+  ## remove the most_recent tag from the action to be undone
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and most_recent=1''' % repo_path)
+
+
+  # result = cursor.execute('''SELECT * FROM backups where created_at=
+  #   (select max(created_at) from backups where repo_path="%s") and repo_path="%s";''' % (repo_path, repo_path))
 
   row = result.fetchone()
 
   backupid = row[0]
   command_to_undo = row[3]
+  current_timestamp = row[2]
   git_args = command_to_undo.split(" ")[1:]
 
   print "repo_path: " + repo_path
@@ -101,6 +114,9 @@ def undo():
       undoPush()
     else:
       restoreBackup(backupid)
+
+    cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path = "%s"''' % repo_path)
+    cursor.execute('''UPDATE backups SET most_recent=1 FROM (SELECT * FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
 
   else: # user does not want to continue undo
     return
