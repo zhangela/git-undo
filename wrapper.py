@@ -5,11 +5,11 @@ import sqlite3
 import time
 
 def setup():
-
   global conn
   global cursor
   global repo_path
   global common_path
+  global common_path_escaped
 
   # strip new line
   repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
