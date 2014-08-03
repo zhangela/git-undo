@@ -47,7 +47,6 @@ def setup():
     git_undo_on = False
 
 def backup_folder_from_backupid(backupid):
-  backupid = cursor.lastrowid
   backupdir = common_path + "backups/" + str(backupid)
 
   return backupdir
@@ -71,6 +70,7 @@ def backup():
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
   cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command, most_recent) VALUES (?, ?, ?, ?)''',
     (repo_path, created_at, git_command, 1))
+  backupid = cursor.lastrowid
 
   backupdir = backup_folder_from_backupid(backupid)
 
@@ -79,6 +79,15 @@ def backup():
 
   # actually copy the backup
   copy_directory(repo_path, backupdir)
+
+  #find all backups less than most recent, make sure this is less than 6
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY backupid ASC ''' % repo_path)
+  allbackups = result.fetchall()
+  if len(allbackups)>7:
+    row = allbackups[0]
+    deleteid = row[0]
+    delete_directory(backup_folder_from_backupid(deleteid))
+    cursor.execute('''DELETE FROM backups WHERE repo_path="%s" and backupid==%i''' % (repo_path, deleteid))
 
   # print message
   print "Git Undo: Backed up to " + backupdir
@@ -121,14 +130,45 @@ def getBranch():
 
 def move_most_recent_flag_back():
   # move the most recent flag one step back
+  cursor.execute('''SELECT backupid FROM backups WHERE most_recent=1 and repo_path="%s"''' % repo_path)
+  backupid = cursor.fetchone()[0]
+
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
-  cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid = (SELECT backupid FROM backups WHERE created_at < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (current_timestamp, repo_path))
-  conn.commit()
+  cursor.execute('''UPDATE backups SET most_recent=1 WHERE backupid =
+    (SELECT backupid FROM backups WHERE backupid < %i and repo_path = "%s" ORDER BY created_at DESC LIMIT 1)''' % (backupid, repo_path))
 
 def undo_with_backup():
-  backup()
-  undo()
-  undo()
+  # backup()
+
+  # figure out where we started
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and most_recent=1''' % repo_path)
+  row = result.fetchone()
+
+  if row is None:
+    print "There are no more actions to undo."
+    return
+
+  # save metadata
+  backupid = row[0]
+  command_to_undo = row[3]
+  git_args = command_to_undo.split(" ")[1:]
+
+  # prompt user
+  if prompt("undo", command_to_undo):
+    # save the edited state
+    backup()
+
+    # proceed with undo as usual
+    if git_args[0] == "push":
+      undoPush()
+    else:
+      restoreBackup(backupid)
+
+    move_most_recent_flag_back()
+    move_most_recent_flag_back()
+
+  else: # user does not want to continue undo
+    return
 
 def undo():
   # where we are
@@ -141,10 +181,7 @@ def undo():
 
   backupid = row[0]
   command_to_undo = row[3]
-  current_timestamp = row[2]
   git_args = command_to_undo.split(" ")[1:]
-
-  print "repo_path: " + repo_path
 
   if prompt("undo", command_to_undo):
     if git_args[0] == "push":
@@ -159,14 +196,18 @@ def undo():
 
 def redo():
   current = cursor.execute('''SELECT * FROM backups WHERE repo_path = "%s" and most_recent=1''' % repo_path)
-  current_backupid = current.fetchone()[0]
-  last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and backupid>%i ORDER BY created_at ASC LIMIT 2''' % (repo_path,current_backupid))
-
-  result = last.fetchall()
+  try:
+    current_backupid = current.fetchone()[0]
+    last = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" and backupid>%i ORDER BY created_at ASC LIMIT 2''' % (repo_path,current_backupid))
+    
+  except:
+    # fetchone is null
+    last = cursor.execute('''SELECT * FROM backups WHERE repo_path = "%s" ORDER BY backupid ASC LIMIT 2''' % repo_path)
   # if list size is not 2, then we're screwed.
   #there is nothing to redo.
 
   #if list size is 2, then we good. 
+  result = last.fetchall()
   
   # if the flag is currently at most recent repo path, then no path to redo
   if len(result)<2:
@@ -252,7 +293,9 @@ try:
       undo_with_backup()
     else:
       undo()
-  
+    
+    conn.commit()
+
   elif sys.argv[1] == "redo":
     redo()
     conn.commit()
