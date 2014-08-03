@@ -1,7 +1,7 @@
 Git Undo
 ========
 
-A wrapper around `git` that lets you undo unfortunate git commands.
+A wrapper around `git` that lets you undo unfortunate git commands by making backups of your git repository. Currently, you can undo the 5 most recent git commands.
 
 Installation
 ----
