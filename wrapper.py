@@ -37,7 +37,6 @@ def setup():
     (backupid integer primary key autoincrement, repo_path text, created_at timestamp, git_command text, most_recent integer)''')
 
 def backup_folder_from_backupid(backupid):
-  backupid = cursor.lastrowid
   backupdir = common_path + "backups/" + str(backupid)
 
   return backupdir
@@ -61,6 +60,7 @@ def backup():
   cursor.execute('''UPDATE backups SET most_recent=0 WHERE most_recent=1 and repo_path="%s"''' % repo_path)
   cursor.execute('''INSERT INTO backups (repo_path, created_at, git_command, most_recent) VALUES (?, ?, ?, ?)''',
     (repo_path, created_at, git_command, 1))
+  backupid = cursor.lastrowid
 
   backupdir = backup_folder_from_backupid(backupid)
 
@@ -69,6 +69,15 @@ def backup():
 
   # actually copy the backup
   copy_directory(repo_path, backupdir)
+
+  #find all backups less than most recent, make sure this is less than 6
+  result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY backupid ASC ''' % repo_path)
+  allbackups = result.fetchall()
+  if len(allbackups)>7:
+    row = allbackups[0]
+    deleteid = row[0]
+    delete_directory(backup_folder_from_backupid(deleteid))
+    cursor.execute('''DELETE FROM backups WHERE repo_path="%s" and backupid==%i''' % (repo_path, deleteid))
 
   # print message
   print "Git Undo: Backed up to " + backupdir
