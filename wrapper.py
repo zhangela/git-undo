@@ -22,7 +22,6 @@ def setup():
   conn = sqlite3.connect(common_path + 'gitundo.db')
   cursor = conn.cursor()
 
-
 def backup():
 
   # Create table
@@ -39,6 +38,7 @@ def backup():
   backupdir = common_path + "backups/" + str(backupid)
 
   # actually copy the backup
+  subprocess.call(["rm", "-rf", backupdir])
   subprocess.call(["cp", "-a", repo_path + "/.", backupdir])
   print "Git Undo: Backed up to " + backupdir
 
