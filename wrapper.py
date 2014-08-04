@@ -294,7 +294,7 @@ try:
     cursor.execute('''UPDATE git_undo_switch SET git_undo_is_on = 0''')
     conn.commit()
 
-  elif (sys.argv[1] == "undo" or sys.argv[1] == "redo") and (not git_undo_on()):
+  elif len(sys.argv) > 1 and (sys.argv[1] == "undo" or sys.argv[1] == "redo") and (not git_undo_on()):
       print "Git Undo is currently off. \nType 'git undo on' to turn on Git Undo."
   
   elif len(sys.argv) > 1 and sys.argv[1] == "undo": #and git undo is on
