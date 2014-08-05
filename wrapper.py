@@ -1,8 +1,12 @@
+# standard libraries
 import subprocess
 import os
 import sys
 import sqlite3
 import time
+
+# from this project
+import file_utils
 
 def setup():
   global conn
@@ -48,14 +52,7 @@ def setup():
 
 def backup_folder_from_backupid(backupid):
   backupdir = common_path + "backups/" + str(backupid)
-
   return backupdir
-
-def delete_directory(path):
-  subprocess.call(["rm", "-rf", path])
-
-def copy_directory(from_path, to_path):
-  subprocess.call(["cp", "-a", from_path + "/.", to_path])
 
 def backup():
   created_at = int(time.time() * 1000)
@@ -66,7 +63,7 @@ def backup():
     (SELECT created_at FROM backups WHERE most_recent=1 and repo_path="%s")''' % (repo_path, repo_path))
   # all of these things that we delete, we want to delete directory as well. 
   for backupid in todelete:
-    delete_directory(backup_folder_from_backupid(backupid[0]))
+    file_utils.delete_directory(backup_folder_from_backupid(backupid[0]))
 
   # delete alternate undo timeline
   cursor.execute('''DELETE FROM backups WHERE
@@ -81,10 +78,10 @@ def backup():
   backupdir = backup_folder_from_backupid(backupid)
 
   # first, clear the folder
-  delete_directory(backupdir)
+  file_utils.delete_directory(backupdir)
 
   # actually copy the backup
-  copy_directory(repo_path, backupdir)
+  file_utils.copy_directory(repo_path, backupdir)
 
   #find all backups less than most recent, make sure this is less than 6
   result = cursor.execute('''SELECT * FROM backups WHERE repo_path="%s" ORDER BY backupid ASC ''' % repo_path)
@@ -92,7 +89,7 @@ def backup():
   if len(allbackups)>7:
     row = allbackups[0]
     deleteid = row[0]
-    delete_directory(backup_folder_from_backupid(deleteid))
+    file_utils.delete_directory(backup_folder_from_backupid(deleteid))
     cursor.execute('''DELETE FROM backups WHERE repo_path="%s" and backupid==%i''' % (repo_path, deleteid))
 
   # print message
