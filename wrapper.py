@@ -20,8 +20,11 @@ def setup():
   if len(sys.argv) > 1 and sys.argv[1] == "init":
     repo_path = os.getcwd()
   else:
-    # strip new line
-    repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
+    if not os.path.isdir('.git') and len(sys.argv) == 1: 
+      subprocess.call(["git"])
+    else:
+      # strip new line
+      repo_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).strip()
 
   # folder to store all settings and backups
   common_path = os.path.expanduser("~/.git-undo/")
